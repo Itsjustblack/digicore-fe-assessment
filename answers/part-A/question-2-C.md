@@ -14,6 +14,6 @@ Together these mean that every single keystroke triggers both a full array scan 
 
 ## The Fix
 
-**For the debounce** — Rather than binding directly to the `(input)` event and calling a method imperatively, the search term should be pushed into a `Subject` (or `BehaviorSubject`). The observable pipeline then applies `debounceTime` (typically 200–300ms) before triggering the filter. This means the filter only runs after the user pauses typing, not on every individual keystroke.
+**For the debounce** — Rather than filtering directly in the `(input)` handler, each keystroke is pushed into a `search$` `Subject`, and the `filteredTransactions$` pipeline applies `debounceTime(250)` to that stream before the `map` that runs the filter. So the filter only runs after the user pauses typing (~250ms), not on every individual keystroke. (`startWith("")` seeds the stream so the unfiltered list still renders immediately on load.)
 
 **For `trackBy`** — A `trackBy` function should be added to the `*ngFor` that returns a stable unique identifier for each transaction (e.g. `t.id`). Angular will then compare items by that key between renders and only update the DOM nodes that actually changed, leaving untouched nodes alone.

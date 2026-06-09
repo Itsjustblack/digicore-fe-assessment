@@ -28,4 +28,4 @@
 
 2. **No search debounce**: The list is re-filtered on every keystroke, which lags on large datasets.
 
-3. **No trackBy in *ngFor**: Angular rebuilds every row on each change instead of reusing them, wasting work.
+3. **No trackBy in ngFor**: Angular rebuilds every row on each change instead of reusing them, wasting work.

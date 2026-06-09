@@ -1,5 +1,15 @@
 # Multi-Bank Custom UI Engine: High Level Design
 
+## Overview
+
+One Angular codebase serves every bank. The frontend is **bank-agnostic**: every per-bank difference (layout, theme, onboarding flow, validation, enabled features) is expressed as **config, not code**, so adding a bank is a new config entry rather than a deploy. This maps directly to the three requirements:
+
+- **One codebase for all banks.** Bank identity resolves which config to load, and one set of components renders it (Bank Identity, Bootstrap Flow).
+- **UI changes dynamically per bank.** Config drives the page layout, theme, and onboarding flow (UI Layout, Theming, Onboarding Flow).
+- **Features enabled or disabled per bank.** A per-bank flag map toggles capabilities at runtime (Feature Flags).
+
+---
+
 ## Bank Identity: Hybrid Approach (Subdomain + Auth Token)
 
 The bank is identified in two phases, one before login and one after, to balance UX and security.
@@ -24,6 +34,7 @@ The bank is identified in two phases, one before login and one after, to balance
 ```json
 {
 	"bankId": "bank-a",
+	"version": "1.0",
 	"theme": {
 		"primary-color": "#003366"
 	},
@@ -45,13 +56,14 @@ The bank is identified in two phases, one before login and one after, to balance
 		"settings": ["ProfileCard", "SecuritySettings"]
 	},
 	"onboarding": [
-		{ "key": "personal-details", "active": true },
+		{ "key": "personal-details", "type": "form", "active": true },
 		{
 			"key": "id-verification",
+			"type": "component",
 			"active": true,
 			"extensions": ["biometric-check"]
 		},
-		{ "key": "account-preferences", "active": false }
+		{ "key": "account-preferences", "type": "form", "active": false }
 	],
 	"features": {
 		"bulk-payments": true,
@@ -134,7 +146,7 @@ So banks get different layouts purely from config, with no new code. Two safegua
 - **Lazy loading.** Each key maps to a lazy import, so only the components a bank actually uses are downloaded, no matter how many exist in total.
 - **Unknown key.** A **fallback placeholder** renders in that slot, so one bad key doesn't break the page.
 
-**Angular mechanics.** Keys map to lazy loaders (`() => import('./account-summary.component')…`), and the Layout Renderer renders each resolved component with `ngComponentOutlet`. Adding a component is one registry entry, with no per-bank template branching.
+Keys map to lazy loaders (`() => import('./account-summary.component')…`), and the Layout Renderer renders each resolved component with `ngComponentOutlet`. Adding a component is one registry entry, with no per-bank template branching.
 
 ---
 
@@ -215,7 +227,7 @@ Each step has:
 
 A **Flow Orchestrator** walks the step list, skips inactive steps, and injects each step's `extensions`, so base flows extend without a rebuild. The field-level `validation` reuses the _exact same shape_ as the Validation Factory below, not a parallel mechanism.
 
-A `form` step renders via a generic `DynamicFormStep`, which builds a `FormGroup` by passing each field's `validation` to the Validation Factory, inheriting all three tiers with no new code. A `component` step resolves through the same lazy-loaded registry as the UI Layout.
+A `form` step renders via a generic `DynamicFormStep`, which builds a `FormGroup` by passing each field's `validation` to the Validation Factory, inheriting all three tiers with no new code. A `component` step resolves through the same lazy-loaded registry pattern as the UI Layout.
 
 ---
 
@@ -268,6 +280,8 @@ A `when` rule attaches at **group level** so it re-evaluates when the referenced
 
 Every tier compiles to a standard `ValidatorFn` at build time, so the form layer never knows the rules came from config.
 
+This config-driven validation is a **frontend UX concern only**: it gives users immediate, per-bank feedback and is not a security boundary. This design covers the frontend only, so the backend is out of scope here, but it is assumed to re-enforce the same rules independently. A bank's validation config is for guiding input, never for guaranteeing it.
+
 ---
 
 ## Feature Flags
@@ -285,7 +299,9 @@ Each bank's enabled features come from a `features` map in the full config.
 }
 ```
 
-The flag map is enforced on the UI using Angular's route guards.
+The flag map is enforced on the UI using Angular's route guards to block disabled routes. The same map also drives a structural directive that hides feature-specific buttons and nav links, so a disabled feature is unreachable everywhere, not just by URL.
+
+**The flag map is the single source of truth for whether a feature is visible.** Because `layout` can list a component for a feature that's switched off (e.g. `QuickTransfer` in the layout while `fx-transfers` is `false`), the Layout Renderer filters each layout list through the flag map before rendering, skipping any component whose feature is disabled. So if `layout` and `features` ever disagree, the flag map wins, and a disabled feature can never slip back in via a layout entry.
 
 ---
 

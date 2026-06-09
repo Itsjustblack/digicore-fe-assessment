@@ -10,27 +10,6 @@ If `getTransactions()` wraps an `HttpClient` call the observable would complete 
 
 ## The Fix
 
-Pipe the observable through `takeUntilDestroyed()` before subscribing. Angular completes the observable when the component is destroyed, so the subscription is torn down for you. No `ngOnDestroy`, no manual `Subscription` tracking, and no `.unsubscribe()` call. This is the modern idiomatic approach (Angular 16+).
+Don't subscribe manually at all. Expose the data as an observable and let the template's `async` pipe own the subscription — it subscribes when the view renders and **unsubscribes automatically** when the component is destroyed. No `.subscribe()` in the class, no `Subscription` to track, no `ngOnDestroy`, and no `.unsubscribe()` call. The leak is removed by construction rather than by remembering to clean up.
 
-```ts
-import { Component, OnInit, inject } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-
-@Component({ /* ... */ })
-export class TransactionsComponent implements OnInit {
-  private transactionService = inject(TransactionService);
-  // takeUntilDestroyed() needs the injection context, so capture it here
-  private destroyRef = takeUntilDestroyed();
-
-  ngOnInit(): void {
-    this.transactionService
-      .getTransactions()
-      .pipe(this.destroyRef)
-      .subscribe((data) => {
-        this.transactions = data;
-      });
-  }
-}
-```
-
-Note: `takeUntilDestroyed()` reads the current injection context, so when it's used outside a field initializer or constructor (e.g. inside `ngOnInit`) you must capture it as a field, as above, or pass an explicit `DestroyRef` via `takeUntilDestroyed(this.destroyRef)`.
+If a case ever genuinely needs an imperative `.subscribe()` (e.g. firing a side effect rather than rendering a value), the modern idiomatic guard is `takeUntilDestroyed()`, which completes the stream when the component is destroyed. Used outside a field initializer or constructor it needs a captured `DestroyRef` passed in. But for simply rendering a value in the template, the `async` pipe is the cleaner answer and is what this solution uses.
