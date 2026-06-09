@@ -20,7 +20,6 @@
 
 9. **Unformatted amounts**: Money shows raw values like `19.9999999` instead of proper currency.
 
----
 
 ## 🟠 Performance Issues
 
