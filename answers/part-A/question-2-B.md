@@ -8,4 +8,6 @@ Usually HTTP observables only emit one value and complete on their own, so the l
 
 ## The Fix
 
-Don't subscribe manually. Expose the data as an observable and let the template's **`async` pipe** own the subscription, it subscribes and **unsubscribes automatically** on destroy. No `.subscribe()`, no `Subscription` to track, no `ngOnDestroy`.
+Expose the filtered list as `filteredTransactions$` and render it through the template's **`async` pipe**, which subscribes and **unsubscribes automatically** on destroy, so the rendered stream needs no manual cleanup.
+
+Data is still loaded with a single manual `.subscribe()` in `ngOnInit`. That call is a one-shot HTTP request that emits once and **completes on its own**, so its subscription tears down without an `ngOnDestroy`. If `getTransactions()` were instead a long-lived stream, this subscription would leak and should be guarded with `takeUntilDestroyed()` (or unsubscribed in `ngOnDestroy`).

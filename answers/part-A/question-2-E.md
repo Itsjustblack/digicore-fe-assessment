@@ -28,7 +28,7 @@ The original loaded data in `ngOnInit`, but the class didn't declare `implements
 
 ### Fix
 
-Remove the lifecycle hook entirely. Data loading lives in the `filteredTransactions$` field initializer consumed by the `async` pipe, so there's no `ngOnInit` to mistype or forget, the bug is designed out.
+Declare `implements OnInit` on the class and keep a properly typed `ngOnInit(): void` hook for the data load. With the interface in place, TypeScript verifies the hook's signature, so a mistyped or mis-cased method name is caught at compile time.
 
 ## Bug 4: Arrays Typed as Plain `[]` With No Interface
 
@@ -38,7 +38,7 @@ Arrays typed as `[]` give TypeScript no idea what's inside. Accesses like `t.amo
 
 ### Fix
 
-Define a `Transaction` interface matching the API shape and type the stream with it. The `map` is annotated `([transactions, term]: [Transaction[], string])`, so every `t.amount` / `t.category` access and `trackById`'s parameter are checked at compile time.
+Define a `Transaction` interface matching the API shape and use it throughout: the data store is typed `transactions: Transaction[]`, and `trackById`'s parameter is typed `(_index: number, t: Transaction)`. Every `t.amount` / `t.category` access is then checked at compile time.
 
 ## Bug 5: `event: any` on `onSearch`
 

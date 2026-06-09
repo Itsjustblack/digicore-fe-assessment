@@ -11,32 +11,32 @@ interface Transaction {
 			(input)="onSearch($event)"
 			placeholder="Search"
 		/>
-
-		<!-- trackBy gives rows stable identity so filtering doesn't rebuild the whole list -->
 		<div *ngFor="let t of filteredTransactions$ | async; trackBy: trackById">
 			{{ t.category }} - {{ t.amount | currency }}
 		</div>
 	`,
 })
-export class TransactionsComponent {
+export class TransactionsComponent implements OnInit {
 	private transactionService = inject(TransactionService);
-
 	private search$ = new Subject<string>();
+	private transactions: Transaction[] = [];
 
-	// Single derived stream: re-filters whenever the data or the (debounced)
-	// search term changes. AsyncPipe subscribes/unsubscribes for us, so there's
-	// no manual subscription, no DestroyRef, and no ngOnInit needed.
-	filteredTransactions$ = combineLatest([
-		this.transactionService.getTransactions(),
-		this.search$.pipe(debounceTime(250), startWith("")),
-	]).pipe(
-		map(([transactions, term]: [Transaction[], string]) => {
+	filteredTransactions$ = this.search$.pipe(
+		debounceTime(250),
+		startWith(""),
+		map((term) => {
 			const q = term.toLowerCase();
-			return transactions.filter((t) =>
+			return this.transactions.filter((t) =>
 				(t.category ?? "").toLowerCase().includes(q),
 			);
 		}),
 	);
+
+	ngOnInit(): void {
+		this.transactionService.getTransactions().subscribe((data) => {
+			this.transactions = data;
+		});
+	}
 
 	onSearch(event: Event): void {
 		this.search$.next((event.target as HTMLInputElement).value);
