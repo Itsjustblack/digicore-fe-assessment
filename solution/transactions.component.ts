@@ -1,8 +1,3 @@
-import { Component, inject } from "@angular/core";
-import { combineLatest, Subject } from "rxjs";
-import { debounceTime, map, startWith } from "rxjs/operators";
-import { TransactionService } from "./transaction.service";
-
 interface Transaction {
 	id: string | number;
 	amount: number;
@@ -12,7 +7,10 @@ interface Transaction {
 @Component({
 	selector: "app-transactions",
 	template: `
-		<input (input)="onSearch($event)" placeholder="Search" />
+		<input
+			(input)="onSearch($event)"
+			placeholder="Search"
+		/>
 
 		<!-- trackBy gives rows stable identity so filtering doesn't rebuild the whole list -->
 		<div *ngFor="let t of filteredTransactions$ | async; trackBy: trackById">
